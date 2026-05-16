@@ -17,8 +17,6 @@ use App\Http\Controllers\AdminController;
 // PUBLIC ROUTES
 // ========================
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/news', [NewsController::class, 'index'])->name('news.index');
-Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
 
 // ========================
 // AUTHENTICATION ROUTES
@@ -36,15 +34,16 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 // AUTHENTICATED USER ROUTES
 // ========================
 Route::middleware('auth')->group(function () {
+    Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+    Route::get('/news/{id}', [NewsController::class, 'show'])->name('news.show');
     Route::post('/feedback/store', [FeedbackController::class, 'store'])->name('feedback.store');
     Route::get('/dashboard', [FeedbackController::class, 'userDashboard'])->name('user.dashboard');
 });
 
 // ========================
-// ADMIN ROUTES (protected by auth + admin middleware)
+// ADMIN ROUTES
 // ========================
 Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(function () {
-    // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
     // News CRUD
@@ -55,8 +54,10 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(fun
     Route::put('/news/{id}', [AdminController::class, 'newsUpdate'])->name('news.update');
     Route::delete('/news/{id}', [AdminController::class, 'newsDestroy'])->name('news.destroy');
 
-    // Fetch from NewsData.io API
+    // Fetch from API (form submit)
     Route::post('/news/fetch-api', [NewsController::class, 'fetchFromApi'])->name('news.fetchApi');
+    // Fetch from API (AJAX — for bulk fetch all categories/languages)
+    Route::post('/news/fetch-api-ajax', [NewsController::class, 'fetchFromApiAjax'])->name('news.fetchApiAjax');
 
     // Feedback Management
     Route::get('/feedback', [AdminController::class, 'feedbackIndex'])->name('feedback.index');

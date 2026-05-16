@@ -19,6 +19,10 @@ class AdminController extends Controller
         $totalFeedback = Feedback::count();
         $avgTrust = Feedback::avg('trust_score');
 
+        // News by source type
+        $apiNewsCount = News::where('source_type', 'api')->count();
+        $adminNewsCount = News::where('source_type', 'admin')->count();
+
         // Sentiment distribution for Chart.js
         $sentiments = [
             'Positive' => Feedback::where('sentiment', 'Positive')->count(),
@@ -44,7 +48,8 @@ class AdminController extends Controller
 
         return view('admin.dashboard', compact(
             'totalUsers', 'totalNews', 'totalFeedback', 'avgTrust',
-            'sentiments', 'biasLevels', 'newsWithScores'
+            'sentiments', 'biasLevels', 'newsWithScores',
+            'apiNewsCount', 'adminNewsCount'
         ));
     }
 
@@ -70,7 +75,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Store a new news article
+     * Store a new news article (admin-created, no dummy feedback)
      */
     public function newsStore(Request $request)
     {
@@ -83,9 +88,17 @@ class AdminController extends Controller
             'image'    => 'nullable|url',
         ]);
 
-        News::create($request->only('title', 'content', 'category', 'language', 'source', 'image'));
+        News::create([
+            'title'       => $request->title,
+            'content'     => $request->content,
+            'category'    => $request->category,
+            'language'    => $request->language,
+            'source'      => $request->source,
+            'image'       => $request->image,
+            'source_type' => 'admin', // Admin-created news has no dummy feedback
+        ]);
 
-        return redirect()->route('admin.news.index')->with('success', 'News article created successfully!');
+        return redirect()->route('admin.news.index')->with('success', 'News article created successfully! Users can now submit feedback.');
     }
 
     /**

@@ -29,6 +29,18 @@
                     <span class="cl-badge" style="background:#fef3c7; color:#92400e;">
                         <i class="bi bi-building"></i> {{ $news->source }}
                     </span>
+                    @if($news->source_type === 'api')
+                        <span class="cl-badge" style="background:#ede9fe; color:#5b21b6;">
+                            <i class="bi bi-cloud"></i> API Fetched
+                        </span>
+                    @else
+                        <span class="cl-badge" style="background:#dcfce7; color:#166534;">
+                            <i class="bi bi-person"></i> Admin Created
+                        </span>
+                    @endif
+                    <span class="cl-badge" style="background:#f3f4f6; color:#374151;">
+                        <i class="bi bi-hash"></i> ID: {{ $news->id }}
+                    </span>
                 </div>
 
                 <!-- Title -->
@@ -37,8 +49,13 @@
                 </h1>
 
                 <p style="font-size:0.8rem; color:var(--cl-gray); margin-bottom:1.5rem;">
-                    Published {{ $news->created_at->format('d M Y, h:i A') }}
+                    Published {{ ($news->published_at ?? $news->created_at)->format('d M Y, h:i A') }}
                     &middot; {{ $feedbackCount }} feedback{{ $feedbackCount != 1 ? 's' : '' }}
+                    @if($news->source_url)
+                        &middot; <a href="{{ $news->source_url }}" target="_blank" style="color:var(--cl-primary); text-decoration:none;">
+                            <i class="bi bi-box-arrow-up-right"></i> Original Source
+                        </a>
+                    @endif
                 </p>
 
                 <!-- Content -->
@@ -116,11 +133,6 @@
                         </button>
                     </form>
                 </div>
-            @else
-                <div class="cl-card p-4 text-center mb-4">
-                    <p style="color:var(--cl-gray); margin-bottom:0.5rem;">Please login to submit feedback on this article.</p>
-                    <a href="{{ route('login') }}" class="btn btn-sm" style="background:var(--cl-primary); color:#fff;">Login to Give Feedback</a>
-                </div>
             @endauth
 
             <!-- Existing Feedback -->
@@ -185,9 +197,33 @@
 
             <!-- Sentiment Chart -->
             @if($feedbackCount > 0)
-                <div class="cl-card p-4">
+                <div class="cl-card p-4 mb-3">
                     <h6 style="font-weight:700; font-size:0.95rem; margin-bottom:1rem;">Sentiment Distribution</h6>
                     <canvas id="sentimentChart" height="200"></canvas>
+                </div>
+            @endif
+
+            <!-- Related News -->
+            @if(isset($relatedNews) && $relatedNews->count())
+                <div class="cl-card p-4">
+                    <h6 style="font-weight:700; font-size:0.95rem; margin-bottom:1rem;">
+                        <i class="bi bi-link-45deg text-primary"></i> Related News
+                    </h6>
+                    @foreach($relatedNews as $related)
+                        <a href="{{ route('news.show', $related->id) }}" class="d-block text-decoration-none mb-3" style="color:inherit;">
+                            <div class="d-flex gap-2">
+                                @if($related->image)
+                                    <img src="{{ $related->image }}" style="width:60px; height:60px; object-fit:cover; border-radius:6px;" onerror="this.style.display='none'">
+                                @endif
+                                <div>
+                                    <p style="font-size:0.8rem; font-weight:600; margin-bottom:0.2rem; line-height:1.3; color:var(--cl-dark);">
+                                        {{ Str::limit($related->title, 60) }}
+                                    </p>
+                                    <span style="font-size:0.7rem; color:var(--cl-gray);">{{ ($related->published_at ?? $related->created_at)->diffForHumans() }}</span>
+                                </div>
+                            </div>
+                        </a>
+                    @endforeach
                 </div>
             @endif
         </div>

@@ -10,9 +10,18 @@
             </div>
         @endif
         <div class="p-3">
-            <div class="d-flex gap-2 mb-2">
+            <div class="d-flex gap-2 mb-2 flex-wrap">
                 <span class="cl-badge" style="background:#dbeafe; color:#1d4ed8;">{{ $item->category }}</span>
                 <span class="cl-badge" style="background:#f3f4f6; color:#6b7280;">{{ $item->language }}</span>
+                @if($item->source_type === 'api')
+                    <span class="cl-badge" style="background:#ede9fe; color:#5b21b6; font-size:0.65rem;">
+                        <i class="bi bi-cloud"></i> API
+                    </span>
+                @else
+                    <span class="cl-badge" style="background:#dcfce7; color:#166534; font-size:0.65rem;">
+                        <i class="bi bi-person"></i> Admin
+                    </span>
+                @endif
             </div>
             <h6 style="font-weight:600; font-size:0.9rem; margin-bottom:0.5rem; line-height:1.4; color:var(--cl-dark);">
                 {{ Str::limit($item->title, 80) }}
@@ -22,8 +31,9 @@
             </p>
             <div style="font-size:0.7rem; color:#9ca3af;">
                 <i class="bi bi-building"></i> {{ $item->source }}
-                &middot; {{ $item->created_at->diffForHumans() }}
+                &middot; {{ ($item->published_at ?? $item->created_at)->diffForHumans() }}
                 &middot; <i class="bi bi-chat-dots"></i> {{ $item->feedbacks_count ?? $item->feedbacks()->count() }} feedback
+                &middot; ID: #{{ $item->id }}
             </div>
         </div>
     </div>

@@ -9,44 +9,48 @@ class News extends Model
 {
     use HasFactory;
 
-    /**
-     * The table associated with the model.
-     */
     protected $table = 'news';
 
-    /**
-     * The attributes that are mass assignable.
-     */
     protected $fillable = [
-        'title',
-        'content',
-        'category',
-        'language',
-        'source',
-        'image',
+        'title', 'content', 'category', 'language', 'source',
+        'image', 'article_id', 'source_url', 'source_type', 'published_at',
     ];
 
-    /**
-     * A news article has many feedback entries
-     */
-    public function feedbacks()
+    protected $casts = [
+        'published_at' => 'datetime',
+    ];
+
+    public static $languageMap = [
+        'en' => 'English', 'hi' => 'Hindi', 'ta' => 'Tamil', 'te' => 'Telugu',
+        'kn' => 'Kannada', 'ml' => 'Malayalam', 'bn' => 'Bengali', 'mr' => 'Marathi',
+        'gu' => 'Gujarati', 'pa' => 'Punjabi', 'ur' => 'Urdu', 'or' => 'Odia',
+    ];
+
+    public static $categories = [
+        'politics', 'business', 'technology', 'science', 'health', 'sports',
+        'entertainment', 'education', 'environment', 'food', 'tourism',
+        'world', 'top', 'domestic', 'crime', 'lifestyle', 'other',
+    ];
+
+    public function feedbacks() { return $this->hasMany(Feedback::class); }
+    public function averageTrustScore() { return $this->feedbacks()->avg('trust_score'); }
+    public function averageClarityScore() { return $this->feedbacks()->avg('clarity_score'); }
+
+    public static function languageName(string $code): string
     {
-        return $this->hasMany(Feedback::class);
+        return self::$languageMap[$code] ?? ucfirst($code);
     }
 
     /**
-     * Get average trust score
+     * Scope: order by published date (fallback to created_at)
      */
-    public function averageTrustScore()
+    public function scopeLatestPublished($query)
     {
-        return $this->feedbacks()->avg('trust_score');
+        return $query->orderByRaw('COALESCE(published_at, created_at) DESC');
     }
 
-    /**
-     * Get average clarity score
-     */
-    public function averageClarityScore()
+    public function scopeOldestPublished($query)
     {
-        return $this->feedbacks()->avg('clarity_score');
+        return $query->orderByRaw('COALESCE(published_at, created_at) ASC');
     }
 }

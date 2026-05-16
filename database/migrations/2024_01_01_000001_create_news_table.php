@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('news', function (Blueprint $table) {
@@ -16,16 +13,17 @@ return new class extends Migration
             $table->string('title');
             $table->text('content');
             $table->string('category');
-            $table->string('language');
+            $table->string('language')->default('English');
             $table->string('source');
             $table->string('image')->nullable();
+            $table->string('article_id')->nullable()->unique();
+            $table->string('source_url')->nullable();
+            $table->enum('source_type', ['api', 'admin'])->default('admin');
+            $table->timestamp('published_at')->nullable()->index();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('news');
