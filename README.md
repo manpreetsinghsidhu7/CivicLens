@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CivicLens – 360° Feedback System for Government News
 
 A Laravel MVC web application for publishing Indian government news and collecting structured 360-degree feedback from citizens.
@@ -125,3 +126,7 @@ MVC Architecture, Routing (named, grouped, resource), Middleware, Blade Template
 ## NewsData.io API
 
 The app integrates NewsData.io to fetch real Indian government news. Admin can import articles via the dashboard "Fetch from NewsData.io" button.
+=======
+# CivicLens
+A Laravel MVC-Based 360° Feedback System for Government News
+>>>>>>> def5388e4cc6acf4c7d71b6b7aeeccae8e3648dd
