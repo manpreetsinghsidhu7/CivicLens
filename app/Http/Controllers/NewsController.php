@@ -30,8 +30,13 @@ class NewsController extends Controller
         $searchTerm = $request->input('search');
         if ($request->filled('search')) {
             $query->where(function ($q) use ($searchTerm) {
-                $q->where('title', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('content', 'like', '%' . $searchTerm . '%');
+                $words = array_filter(explode(' ', $searchTerm));
+                foreach ($words as $word) {
+                    $q->where(function ($subQ) use ($word) {
+                        $subQ->where('title', 'like', '%' . $word . '%')
+                             ->orWhere('content', 'like', '%' . $word . '%');
+                    });
+                }
             });
         }
 
@@ -66,30 +71,66 @@ class NewsController extends Controller
         $categories = News::distinct()->pluck('category')->filter()->sort()->values();
         $languages = News::distinct()->pluck('language')->filter()->sort()->values();
 
-        // If search results are empty and it's not a fetch request, show "Searching..." state
         $searching = false;
-        if ($request->filled('search') && $news->isEmpty() && !$request->has('fetch')) {
-            $searching = true;
-        }
-
-        // If fetch is requested, do the actual API call
         $autoFetched = false;
-        if ($request->has('fetch') && $request->filled('search')) {
-            $imported = $this->fetchAndInsertFromApi($searchTerm, $request->input('category'), $request->input('language'));
-            if ($imported > 0) {
-                $autoFetched = true;
-                // Refresh query
-                $query = News::query();
-                $query->where(function ($q) use ($searchTerm) {
-                    $q->where('title', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('content', 'like', '%' . $searchTerm . '%');
-                });
-                if ($request->filled('category')) $query->where('category', $request->category);
-                if ($request->filled('language')) $query->where('language', $request->language);
-                $query->latestPublished();
-                $news = $query->paginate(12);
-                $categories = News::distinct()->pluck('category')->filter()->sort()->values();
-                $languages = News::distinct()->pluck('language')->filter()->sort()->values();
+
+        if ($request->filled('search')) {
+            $needsImport = false;
+            if ($news->total() < 3) {
+                $needsImport = true;
+            } else {
+                $recentCount = News::where(function ($q) use ($searchTerm) {
+                        $words = array_filter(explode(' ', $searchTerm));
+                        foreach ($words as $word) {
+                            $q->where(function ($subQ) use ($word) {
+                                $subQ->where('title', 'like', '%' . $word . '%')
+                                     ->orWhere('content', 'like', '%' . $word . '%');
+                            });
+                        }
+                    })
+                    ->when($request->category, fn($q) => $q->where('category', $request->category))
+                    ->when($request->language, fn($q) => $q->where('language', $request->language))
+                    ->where('created_at', '>=', Carbon::now()->subDay())
+                    ->count();
+                if ($recentCount == 0) {
+                    $needsImport = true;
+                }
+            }
+
+            if ($needsImport) {
+                $userLang = $request->input('language', 'English');
+                $imported = $this->fetchAndInsertFromApi($searchTerm, $request->input('category'), $userLang, true, 3);
+                
+                if ($imported > 0) {
+                    $autoFetched = true;
+                    // Refresh query
+                    $query = News::query();
+                    $query->where(function ($q) use ($searchTerm) {
+                        $words = array_filter(explode(' ', $searchTerm));
+                        foreach ($words as $word) {
+                            $q->where(function ($subQ) use ($word) {
+                                $subQ->where('title', 'like', '%' . $word . '%')
+                                     ->orWhere('content', 'like', '%' . $word . '%');
+                            });
+                        }
+                    });
+                    if ($request->filled('category')) $query->where('category', $request->category);
+                    if ($request->filled('language')) $query->where('language', $request->language);
+                    if ($request->filled('source_type')) $query->where('source_type', $request->source_type);
+                    
+                    switch ($sortBy) {
+                        case 'oldest': $query->oldestPublished(); break;
+                        case 'most_feedback': $query->withCount('feedbacks')->orderByDesc('feedbacks_count'); break;
+                        case 'highest_trust': $query->withAvg('feedbacks', 'trust_score')->orderByDesc('feedbacks_avg_trust_score'); break;
+                        case 'title_az': $query->orderBy('title', 'asc'); break;
+                        case 'title_za': $query->orderBy('title', 'desc'); break;
+                        default: $query->latestPublished(); break;
+                    }
+                    
+                    $news = $query->paginate(12);
+                    $categories = News::distinct()->pluck('category')->filter()->sort()->values();
+                    $languages = News::distinct()->pluck('language')->filter()->sort()->values();
+                }
             }
         }
 
@@ -144,9 +185,9 @@ class NewsController extends Controller
     /**
      * Core: Fetch from NewsData.io, insert with dedup, generate category-based feedback.
      */
-    public function fetchAndInsertFromApi(?string $query = null, ?string $category = null, ?string $language = null): int
+    public function fetchAndInsertFromApi(?string $query = null, ?string $category = null, ?string $language = null, bool $isUserSearch = false, ?int $limit = null): int
     {
-        $apiKey = config('services.newsdata.key');
+        $apiKey = $isUserSearch ? 'pub_c1f05f18da274d66bc1cbaae59f72a81' : config('services.newsdata.key');
         if (empty($apiKey)) return 0;
 
         $langCode = $language;
@@ -207,6 +248,10 @@ class NewsController extends Controller
 
                 $this->generateDummyFeedback($newsItem);
                 $imported++;
+                
+                if ($limit && $imported >= $limit) {
+                    break;
+                }
             }
 
             return $imported;
